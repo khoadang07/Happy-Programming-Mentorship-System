@@ -5,7 +5,7 @@ export function SearchForm({
   className = ''
 } = {}) {
   return `
-<form id="${id}" data-search-form class="search-form mx-auto max-w-[640px] border-brand/20 bg-white text-ink shadow-lg shadow-brand/10 ${className}" role="search" action="#mentors">
+<form id="${id}" data-search-form class="search-form mx-auto max-w-[640px] border-brand/20 bg-white text-ink shadow-lg shadow-brand/10 ${className}" role="search" action="#/mentors">
   <span class="ml-3 text-muted">
     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
   </span>

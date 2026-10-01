@@ -115,7 +115,10 @@ Backend rules:
 - Never expose JPA entities as public API responses.
 - Use request and response DTOs with Bean Validation.
 - Return a consistent API response and error format.
-- Use Flyway migrations for schema changes. Never rely on manual database edits.
+- Use Flyway/versioned migrations for schema changes. Never rely on manual database edits.
+- **Database Schema Management (`docs/database/`)**:
+  - `docs/database/init/`: Contains the baseline canonical schema (`schema_31_tables.sql`). This baseline is **IMMUTABLE** and must never be altered in place.
+  - `docs/database/migration/`: Any subsequent schema modification (alter table, add column, new index/trigger) must be added as a separate migration script named with date and change description: `YYYYMMDD_<description>.sql` (e.g. `20261001_add_mentor_headline.sql`).
 - Document API behavior in `contracts/` before implementing endpoints.
 - Preserve backward compatibility unless the active specification explicitly approves a breaking change.
 - Enforce authorization in the backend even when the frontend hides an action.

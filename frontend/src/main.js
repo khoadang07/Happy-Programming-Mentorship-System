@@ -1,6 +1,8 @@
 import './app.css';
 import { HomePage } from './pages/HomePage.js';
 import { ComponentShowcasePage } from './pages/ComponentShowcasePage.js';
+import { MentorSearchPage } from './pages/MentorSearchPage.js';
+import { DirectoryMentorCard } from './components/mentor/DirectoryMentorCard.js';
 import { mentorService } from './services/mentorService.js';
 
 const INITIAL_MENTORS = [
@@ -86,6 +88,27 @@ const INITIAL_MENTORS = [
 
 let currentMentors = [...INITIAL_MENTORS];
 const appEl = document.querySelector('#app');
+
+function openMentorDirectory(keyword = '') {
+  const url = new URL(window.location.href);
+  url.search = '';
+  const query = keyword.trim();
+  if (query) url.searchParams.set('q', query);
+  history.pushState(null, '', `${url.pathname}${url.search}#/mentors`);
+  router();
+}
+
+const toDirectoryMentor = (mentor, index) => ({
+  company: ['FPT Software', 'NashTech', 'VNG', 'Grab', 'KMS Technology', 'Tiki'][index] || 'Technology company',
+  languages: ['Vietnamese', 'English'],
+  country: index === 3 ? 'Singapore' : index === 4 ? 'United States' : 'Vietnam',
+  yearsExperience: Number.parseInt(mentor.experience, 10) || 5,
+  monthlyPrice: Number(String(mentor.monthly).replaceAll(',', '')) || 0,
+  rating: [4.9, 4.8, 5, 4.7, 4.9, 4.6][index] || 4.8,
+  reviewCount: [38, 24, 31, 19, 27, 16][index] || 12,
+  acceptingMentees: index !== 3,
+  ...mentor
+});
 
 function renderApp(mentors) {
   currentMentors = mentors;
@@ -194,11 +217,7 @@ function initInteractions() {
     form.addEventListener('submit', event => {
       event.preventDefault();
       const input = form.querySelector('[data-search-input]');
-      query = input ? input.value.trim() : '';
-      activeFilter = 'all';
-      syncInputs();
-      filterCards();
-      showDiscovery();
+      openMentorDirectory(input ? input.value : '');
     })
   );
 
@@ -393,12 +412,181 @@ function router() {
   if (hash === '#/components' || hash === '#/showcase') {
     appEl.innerHTML = ComponentShowcasePage();
     window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash.startsWith('#/mentors')) {
+    const params = new URLSearchParams(window.location.search);
+    const initialFilters = {
+      q: params.get('q') || '', skills: params.getAll('skills'), categories: params.getAll('categories'),
+      jobTitles: params.getAll('jobTitles'), companies: params.getAll('companies'),
+      languages: params.getAll('languages'), countries: params.getAll('countries'),
+      minExperience: params.get('minExperience') || '', minPrice: params.get('minPrice') || '', maxPrice: params.get('maxPrice') || '',
+      minRating: params.get('minRating') || '', available: params.get('available') || '',
+      sort: params.get('sort') || 'recommended'
+    };
+    appEl.innerHTML = MentorSearchPage(currentMentors.map(toDirectoryMentor), initialFilters);
+    initMentorDirectory();
+    window.scrollTo({ top: 0, behavior: 'instant' });
   } else {
     renderApp(currentMentors);
   }
 }
 
+function initMentorDirectory() {
+  const form = document.querySelector('#directory-search');
+  const panel = document.querySelector('#filter-panel');
+  const results = document.querySelector('#mentor-results');
+  const loading = document.querySelector('#directory-loading');
+  const empty = document.querySelector('#directory-empty');
+  const error = document.querySelector('#directory-error');
+  const resultCount = document.querySelector('#result-count');
+  const activeFilters = document.querySelector('#active-filters');
+  const sort = document.querySelector('#sort');
+  const mobileButton = document.querySelector('#mobile-filter-button');
+  let requestNumber = 0;
+  let toastTimer;
+
+  const getFilters = () => ({
+    q: document.querySelector('#directory-query')?.value.trim() || '',
+    categories: [...document.querySelectorAll('input[name="categories"]:checked')].map(input => input.value),
+    skills: [...document.querySelectorAll('input[name="skills"]:checked')].map(input => input.value),
+    jobTitles: [...document.querySelectorAll('input[name="jobTitles"]:checked')].map(input => input.value),
+    companies: [...document.querySelectorAll('input[name="companies"]:checked')].map(input => input.value),
+    languages: [...document.querySelectorAll('input[name="languages"]:checked')].map(input => input.value),
+    countries: [...document.querySelectorAll('input[name="countries"]:checked')].map(input => input.value),
+    minExperience: document.querySelector('input[name="minExperience"]:checked')?.value || '',
+    minPrice: document.querySelector('input[name="minPrice"]')?.value || '',
+    maxPrice: document.querySelector('input[name="maxPrice"]')?.value || '',
+    minRating: document.querySelector('input[name="minRating"]:checked')?.value || '',
+    available: document.querySelector('input[name="available"]')?.checked || false,
+    sort: sort?.value || 'recommended'
+  });
+
+  const filterLabels = filters => {
+    const labels = [...filters.categories, ...filters.skills, ...filters.jobTitles, ...filters.companies, ...filters.languages, ...filters.countries];
+    if (filters.q) labels.unshift(`Search: ${filters.q}`);
+    if (filters.minExperience) labels.push(`${filters.minExperience}+ years`);
+    if (filters.minPrice) labels.push(`From ${Number(filters.minPrice).toLocaleString('en-US')} VND`);
+    if (filters.maxPrice) labels.push(`Up to ${Number(filters.maxPrice).toLocaleString('en-US')} VND`);
+    if (filters.minRating) labels.push(`${filters.minRating}+ stars`);
+    if (filters.available) labels.push('Available now');
+    return labels;
+  };
+
+  function syncFilterSummary(filters) {
+    const labels = filterLabels(filters);
+    activeFilters.hidden = labels.length === 0;
+    activeFilters.replaceChildren(...labels.map(label => {
+      const chip = document.createElement('span');
+      chip.className = 'active-filter';
+      chip.textContent = label;
+      return chip;
+    }));
+    const count = document.querySelector('#mobile-filter-count');
+    if (count) count.textContent = labels.length ? `(${labels.length})` : '';
+    const url = new URL(window.location.href);
+    url.search = '';
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value)) value.forEach(item => url.searchParams.append(key, item));
+      else if (value !== '' && value !== false && !(key === 'sort' && value === 'recommended')) url.searchParams.set(key, value);
+    });
+    history.replaceState(null, '', `${url.pathname}${url.search}#/mentors`);
+  }
+
+  function wireCards() {
+    let saved;
+    try { saved = new Set(JSON.parse(localStorage.getItem('hpms.saved-mentors.v1') || '[]')); }
+    catch { saved = new Set(); }
+    document.querySelectorAll('[data-mentor-id]').forEach(card => {
+      const id = card.dataset.mentorId;
+      const button = card.querySelector('[data-save]');
+      button?.setAttribute('aria-pressed', String(saved.has(id)));
+      button?.addEventListener('click', () => {
+        saved.has(id) ? saved.delete(id) : saved.add(id);
+        button.setAttribute('aria-pressed', String(saved.has(id)));
+        try { localStorage.setItem('hpms.saved-mentors.v1', JSON.stringify([...saved])); } catch { /* use session state */ }
+        const toast = document.querySelector('#toast');
+        if (toast) {
+          clearTimeout(toastTimer);
+          toast.textContent = saved.has(id) ? 'Mentor saved to your wishlist.' : 'Mentor removed from your wishlist.';
+          toast.hidden = false;
+          toastTimer = setTimeout(() => { toast.hidden = true; }, 2500);
+        }
+      });
+    });
+  }
+
+  async function search() {
+    const activeRequest = ++requestNumber;
+    const filters = getFilters();
+    syncFilterSummary(filters);
+    loading.hidden = false;
+    results.hidden = true;
+    empty.hidden = true;
+    error.hidden = true;
+    try {
+      const mentors = await mentorService.searchMentors(filters);
+      if (activeRequest !== requestNumber) return;
+      results.innerHTML = mentors.map(DirectoryMentorCard).join('');
+      results.hidden = mentors.length === 0;
+      empty.hidden = mentors.length > 0;
+      resultCount.textContent = `${mentors.length} mentor${mentors.length === 1 ? '' : 's'} found`;
+      wireCards();
+    } catch {
+      if (activeRequest !== requestNumber) return;
+      error.hidden = false;
+      resultCount.textContent = 'Mentor search unavailable';
+    } finally {
+      if (activeRequest === requestNumber) loading.hidden = true;
+    }
+  }
+
+  function clearFilters() {
+    form.reset();
+    form.querySelector('[name="q"]').value = '';
+    panel.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; });
+    panel.querySelectorAll('input[type="number"], input[type="search"]').forEach(input => { input.value = ''; });
+    panel.querySelectorAll('.filter-option').forEach(option => { option.hidden = option.classList.contains('is-extra'); });
+    panel.querySelectorAll('[data-show-options]').forEach(button => { button.setAttribute('aria-expanded', 'false'); button.textContent = 'Show more'; });
+    sort.value = 'recommended';
+    search();
+  }
+
+  form?.addEventListener('submit', event => { event.preventDefault(); search(); });
+  panel?.addEventListener('change', () => { if (window.innerWidth >= 1024) search(); });
+  sort?.addEventListener('change', search);
+  document.querySelector('#clear-filters')?.addEventListener('click', clearFilters);
+  document.querySelector('#empty-clear')?.addEventListener('click', clearFilters);
+  document.querySelector('#retry-search')?.addEventListener('click', search);
+  document.querySelector('#apply-mobile-filters')?.addEventListener('click', () => { panel.classList.remove('is-open'); mobileButton.setAttribute('aria-expanded', 'false'); search(); });
+  mobileButton?.addEventListener('click', () => {
+    const open = panel.classList.toggle('is-open');
+    mobileButton.setAttribute('aria-expanded', String(open));
+  });
+  panel?.querySelectorAll('[data-option-search]').forEach(input => {
+    input.addEventListener('input', () => {
+      const term = input.value.trim().toLowerCase();
+      panel.querySelectorAll(`[data-filter-options="${input.dataset.optionSearch}"] .filter-option`).forEach(option => {
+        const expanded = panel.querySelector(`[data-show-options="${input.dataset.optionSearch}"]`)?.getAttribute('aria-expanded') === 'true';
+        option.hidden = term ? !option.dataset.optionLabel.includes(term) : option.classList.contains('is-extra') && !expanded && !option.querySelector('input').checked;
+      });
+    });
+  });
+  panel?.querySelectorAll('[data-show-options]').forEach(button => {
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      button.textContent = expanded ? 'Show more' : 'Show less';
+      const term = panel.querySelector(`[data-option-search="${button.dataset.showOptions}"]`)?.value.trim().toLowerCase() || '';
+      panel.querySelectorAll(`[data-filter-options="${button.dataset.showOptions}"] .filter-option`).forEach(option => {
+        option.hidden = term ? !option.dataset.optionLabel.includes(term) : expanded && option.classList.contains('is-extra') && !option.querySelector('input').checked;
+      });
+    });
+  });
+  wireCards();
+  if (filterLabels(getFilters()).length > 0 || getFilters().sort !== 'recommended') search();
+}
+
 window.addEventListener('hashchange', router);
+window.addEventListener('popstate', router);
 
 // Initial route
 router();
@@ -407,9 +595,18 @@ router();
 mentorService
   .getFeaturedMentors()
   .then(res => {
-    if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-      currentMentors = res.data;
-      if (!window.location.hash.startsWith('#/components') && !window.location.hash.startsWith('#/showcase')) {
+    if (Array.isArray(res) && res.length > 0) {
+      currentMentors = res;
+      if (window.location.hash.startsWith('#/mentors')) {
+        const params = new URLSearchParams(window.location.search);
+        appEl.innerHTML = MentorSearchPage(currentMentors.map(toDirectoryMentor), {
+          q: params.get('q') || '', skills: params.getAll('skills'), categories: params.getAll('categories'), minExperience: params.get('minExperience') || '',
+          jobTitles: params.getAll('jobTitles'), companies: params.getAll('companies'), languages: params.getAll('languages'), countries: params.getAll('countries'),
+          minPrice: params.get('minPrice') || '', maxPrice: params.get('maxPrice') || '', minRating: params.get('minRating') || '', available: params.get('available') || '',
+          sort: params.get('sort') || 'recommended'
+        });
+        initMentorDirectory();
+      } else if (!window.location.hash.startsWith('#/components') && !window.location.hash.startsWith('#/showcase')) {
         renderApp(currentMentors);
       }
     }

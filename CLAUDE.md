@@ -53,7 +53,10 @@ All active feature work, API endpoints, and client modules must target `backend/
 - Keep controllers thin and business rules in services.
 - Use DTOs at API boundaries; do not serialize JPA entities directly.
 - Use Bean Validation and the shared exception response format.
-- Use Flyway for persistent schema changes.
+- Use Flyway for persistent schema changes. Never rely on manual database edits.
+- Database Schema (`docs/database/`):
+  - `docs/database/init/`: Contains baseline `schema_31_tables.sql` (immutable; keep intact).
+  - `docs/database/migration/`: For any schema modifications, create a new script named `YYYYMMDD_<description>.sql`.
 - Apply authorization and ownership checks in the backend.
 - Make VNPay and other callback-driven operations idempotent and verifiable.
 - Add focused unit or integration coverage for changed behavior.

@@ -1,3 +1,4 @@
+import { MENTOR_CATEGORIES } from '../constants/mentorDiscovery.js';
 import { Header } from '../components/layout/Header.js';
 import { Footer } from '../components/layout/Footer.js';
 import { MentorCard } from '../components/mentor/MentorCard.js';
@@ -22,7 +23,7 @@ export function HomePage(mentors = []) {
   return `
 <a href="#main" class="sr-only z-50 rounded-lg bg-brand p-3 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
 <div class="hero-shell relative overflow-hidden">
-  ${Header()}
+  ${Header(mentors)}
 </div>
 <main id="main">
   <div class="hero-shell relative overflow-hidden">
@@ -31,18 +32,14 @@ export function HomePage(mentors = []) {
         <p class="mb-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">A HUMAN CONNECTION. A BETTER WAY TO LEARN.</p>
         <h1 id="hero-title" class="hero-title">1-on-1 mentorship for<br><em>your next chapter in code.</em></h1>
         <p class="mx-auto mt-6 max-w-xl text-[14px] leading-7 text-muted">Build your skills. Get unstuck. Bring your ideas to life.<br class="hidden sm:block"> Find a programming mentor who gets where you want to go.</p>
-        <form id="mentor-search" data-search-form class="search-form mx-auto mt-7 max-w-[640px] border-brand/20 bg-white text-ink shadow-lg shadow-brand/10" role="search" action="#mentors">
+        <form id="mentor-search" data-search-form class="search-form mx-auto mt-7 max-w-[640px] border-brand/20 bg-white text-ink shadow-lg shadow-brand/10" role="search" action="#/mentors">
           <span class="ml-3 text-muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></span>
           <label class="sr-only" for="search-input">Search by skill, name or role</label>
           <input id="search-input" data-search-input name="q" type="search" placeholder="Try Java, React, or a mentor's name" class="placeholder:text-muted" maxlength="100" autocomplete="off">
           <button class="btn btn-light shrink-0 !px-4 sm:!px-6" type="submit">Find mentors <span class="hidden sm:inline-flex"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span></button>
         </form>
         <div class="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
-          <button class="topic-pill" data-quick-search="Java">Java & Spring Boot</button>
-          <button class="topic-pill" data-quick-search="React">Frontend Development</button>
-          <button class="topic-pill" data-quick-search="Python">Python & Data</button>
-          <button class="topic-pill" data-quick-search="System Design">System Design</button>
-          <button class="topic-pill" data-quick-search="Full-stack">Full-stack Development</button>
+          ${MENTOR_CATEGORIES.map(({ label }) => `<a class="topic-pill" href="?${new URLSearchParams({ categories: label })}#/mentors">${label.replaceAll('&', '&amp;')}</a>`).join('') }
         </div>
       </div>
       <div class="mt-6 sm:mt-9">
