@@ -1,9 +1,19 @@
+import { mountMentorProfile } from './pages/MentorProfilePage.js';
+import { mountLogin } from './pages/LoginPage.js';
+import { mountMenteeSignup } from './pages/MenteeSignupPage.js';
+import { mountAccount } from './pages/AccountPage.js';
+import { mountMentorApplication } from './pages/MentorApplicationPage.js';
+import { mountStaffMentorApplications } from './pages/StaffMentorApplicationsPage.js';
+import { bindAuthInfo } from './components/auth/LoginForm.js';
 import './app.css';
 import { HomePage } from './pages/HomePage.js';
 import { ComponentShowcasePage } from './pages/ComponentShowcasePage.js';
 import { MentorSearchPage } from './pages/MentorSearchPage.js';
 import { DirectoryMentorCard } from './components/mentor/DirectoryMentorCard.js';
+import { bindMentorPricingCardEvents } from './components/mentor/MentorPricingCard.js';
 import { mentorService } from './services/mentorService.js';
+import { authService } from './services/authService.js';
+import { bindUserDropdown } from './components/layout/Header.js';
 
 const INITIAL_MENTORS = [
   {
@@ -112,7 +122,7 @@ const toDirectoryMentor = (mentor, index) => ({
 
 function renderApp(mentors) {
   currentMentors = mentors;
-  appEl.innerHTML = HomePage(mentors);
+  appEl.innerHTML = HomePage(mentors, authService.getCurrentUser());
   initInteractions();
 }
 
@@ -282,10 +292,6 @@ function initInteractions() {
     button.addEventListener('click', () => openDialog(button.dataset.dialog))
   );
 
-  const loginNavBtn = document.querySelector('#login-nav-btn');
-  if (loginNavBtn) {
-    loginNavBtn.addEventListener('click', () => openDialog('login-dialog'));
-  }
 
   document.querySelectorAll('dialog').forEach(dialog => {
     dialog.querySelectorAll('[data-close]').forEach(button =>
@@ -342,7 +348,7 @@ function initInteractions() {
   document.querySelectorAll('[data-mentor-id]').forEach(button =>
     button.addEventListener('click', () => {
       const mentor = currentMentors.find(m => m.id === button.dataset.mentorId);
-      if (mentor) showMentorModal(mentor);
+      if (mentor) window.location.hash = `/mentors/${encodeURIComponent(mentor.id)}`;
     })
   );
 
@@ -405,12 +411,38 @@ function initInteractions() {
 
   updateSavedButtons();
   filterCards();
+  bindUserDropdown(appEl, () => {
+    renderApp(currentMentors);
+  });
 }
 
 function router() {
   const hash = window.location.hash;
-  if (hash === '#/components' || hash === '#/showcase') {
+  if (hash === '#/login' || hash.startsWith('#/login?')) {
+    mountLogin(appEl);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash === '#/staff/mentor-applications') {
+    mountStaffMentorApplications(appEl);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash === '#/signup' || hash.startsWith('#/signup?') || hash === '#/signup/mentee') {
+    mountMenteeSignup(appEl);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash === '#/apply/mentor' || hash.startsWith('#/apply/mentor') || hash === '#/signup/mentor') {
+    mountMentorApplication(appEl);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash === '#/account') {
+    location.hash = '#/';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash.startsWith('#/mentors/')) {
+    let id;
+    try { id = decodeURIComponent(hash.slice('#/mentors/'.length)); } catch { id = ''; }
+    mountMentorProfile(appEl, id);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  } else if (hash === '#/components' || hash === '#/showcase') {
     appEl.innerHTML = ComponentShowcasePage();
+    bindAuthInfo(appEl);
+    appEl.querySelector('#login-form')?.addEventListener('submit', event => event.preventDefault());
+    bindMentorPricingCardEvents(appEl);
     window.scrollTo({ top: 0, behavior: 'instant' });
   } else if (hash.startsWith('#/mentors')) {
     const params = new URLSearchParams(window.location.search);
@@ -582,6 +614,7 @@ function initMentorDirectory() {
     });
   });
   wireCards();
+  bindUserDropdown(appEl, () => router());
   if (filterLabels(getFilters()).length > 0 || getFilters().sort !== 'recommended') search();
 }
 
@@ -591,12 +624,20 @@ window.addEventListener('popstate', router);
 // Initial route
 router();
 
+// Revalidate session in background
+authService.me().then(user => {
+  if (user && (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#')) {
+    renderApp(currentMentors);
+  }
+}).catch(() => {});
+
 // Hydrate / fetch from Spring Boot REST API
 mentorService
   .getFeaturedMentors()
   .then(res => {
     if (Array.isArray(res) && res.length > 0) {
       currentMentors = res;
+      if (['#/mentors/', '#/login', '#/signup', '#/apply/', '#/staff/'].some(prefix => window.location.hash.startsWith(prefix)) || window.location.hash === '#/account') return;
       if (window.location.hash.startsWith('#/mentors')) {
         const params = new URLSearchParams(window.location.search);
         appEl.innerHTML = MentorSearchPage(currentMentors.map(toDirectoryMentor), {

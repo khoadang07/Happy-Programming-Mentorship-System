@@ -2,6 +2,10 @@ import { mentorMatchesCategory } from '../constants/mentorDiscovery.js';
 import { apiClient } from './apiClient.js';
 
 export const mentorService = {
+  async getProfile(id) {
+    const mentors = await apiClient('/api/mentors');
+    return mentors.find(mentor => mentor.id === id) || null;
+  },
   async getFeaturedMentors() {
     return apiClient('/api/mentors');
   },

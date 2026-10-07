@@ -37,7 +37,7 @@ export function DirectoryMentorCard(mentor) {
             <p class="text-[11px] text-muted">Monthly mentorship from</p>
             <p class="mt-0.5 text-[17px] font-semibold">${escapeHtml(mentor.monthly)} VND <span class="text-[11px] font-normal text-muted">/ month</span></p>
           </div>
-          <button class="btn btn-primary btn-sm" data-view-profile="${escapeHtml(mentor.id)}">View profile</button>
+          <a class="btn btn-primary btn-sm" href="#/mentors/${encodeURIComponent(mentor.id)}">View profile</a>
         </div>
       </div>
     </article>`;

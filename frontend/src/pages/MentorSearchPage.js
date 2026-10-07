@@ -1,6 +1,8 @@
 import { DirectoryMentorCard } from '../components/mentor/DirectoryMentorCard.js';
 import { MENTOR_CATEGORIES, mentorMatchesCategory, mentorSkillOptions } from '../constants/mentorDiscovery.js';
 import { Footer } from '../components/layout/Footer.js';
+import { renderUserDropdown } from '../components/layout/Header.js';
+import { authService } from '../services/authService.js';
 
 const escapeHtml = value => String(value ?? '')
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -31,6 +33,10 @@ function filterSection({ title, name, options, selected = [], searchable = true,
 }
 
 export function MentorSearchPage(mentors = [], state = {}) {
+  const currentUser = authService.getCurrentUser();
+  const displayName = currentUser?.name || currentUser?.email || '';
+  const initials = displayName ? (displayName.trim().split(/\s+/).filter(Boolean).length > 1 ? (displayName.trim().split(/\s+/)[0][0] + displayName.trim().split(/\s+/).slice(-1)[0][0]).toUpperCase() : displayName.slice(0, 2).toUpperCase()) : 'U';
+
   const groups = [
     filterSection({ title: 'Categories', name: 'categories', options: MENTOR_CATEGORIES.map(({ label }) => [label, mentors.filter(mentor => mentorMatchesCategory(mentor, label)).length]), selected: state.categories || [], searchable: false }),
     filterSection({ title: 'Skills', name: 'skills', options: mentorSkillOptions(mentors), selected: state.skills || [], visible: Number.POSITIVE_INFINITY }),
@@ -49,8 +55,12 @@ export function MentorSearchPage(mentors = [], state = {}) {
       </a>
       <nav class="flex items-center gap-3" aria-label="Main navigation">
         <a href="#/mentors" class="nav-link text-brand" aria-current="page">Find a mentor</a>
-        <button class="btn btn-outline btn-sm" type="button">Log in</button>
-        <button class="btn btn-primary btn-sm hidden sm:inline-flex" type="button">Get started</button>
+        ${currentUser
+          ? renderUserDropdown({ currentUser, displayName, initials, isMobile: false })
+          : `
+          <a href="#/login" class="btn btn-outline btn-sm">Log in</a>
+          <a href="#/signup" class="btn btn-primary btn-sm hidden sm:inline-flex">Get started</a>
+        `}
       </nav>
     </div>
   </header>

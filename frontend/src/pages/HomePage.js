@@ -3,7 +3,7 @@ import { Header } from '../components/layout/Header.js';
 import { Footer } from '../components/layout/Footer.js';
 import { MentorCard } from '../components/mentor/MentorCard.js';
 
-export function HomePage(mentors = []) {
+export function HomePage(mentors = [], user = null) {
   const mentorCardsHtml = mentors.length > 0
     ? mentors.map(m => MentorCard(m)).join('')
     : '<div class="col-span-full py-12 text-center text-muted">Loading mentors...</div>';
@@ -22,8 +22,8 @@ export function HomePage(mentors = []) {
 
   return `
 <a href="#main" class="sr-only z-50 rounded-lg bg-brand p-3 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
-<div class="hero-shell relative overflow-hidden">
-  ${Header(mentors)}
+<div class="hero-shell relative z-20">
+  ${Header(mentors, user)}
 </div>
 <main id="main">
   <div class="hero-shell relative overflow-hidden">
@@ -234,7 +234,7 @@ export function HomePage(mentors = []) {
           <h2 id="become-title" class="section-title mt-4">Someone's next step<br>could start with your experience.</h2>
           <p class="mt-5 max-w-xl text-[13px] leading-7 text-white/65">Help another developer find their footing. Share what you know, give meaningful feedback, and grow alongside the people you mentor.</p>
         </div>
-        <button class="btn btn-light shrink-0" data-dialog="become-dialog">Become a mentor <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button>
+        <a href="#/apply/mentor" class="btn btn-light shrink-0">Become a mentor <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
       </div>
     </section>
 
@@ -286,14 +286,6 @@ ${Footer()}
   </div>
   <p class="mt-5 text-xs leading-6 text-muted">This is a sample profile. Applications and session bookings will be available in a future release.</p>
   <button class="btn btn-primary mt-5" data-close>Keep exploring <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-</dialog>
-
-<dialog id="login-dialog" class="modal" aria-labelledby="login-dialog-title">
-  <button class="modal-close" data-close aria-label="Close"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
-  <span class="grid h-12 w-12 place-items-center rounded-2xl bg-lilac text-brand"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>
-  <h2 id="login-dialog-title" class="mt-5 font-display text-3xl">Your next chapter starts here.</h2>
-  <p class="mt-4 text-sm leading-7 text-muted">Account registration and login are coming in a future release. For now, explore our sample mentor profiles, compare learning options, and save your favorites in this browser.</p>
-  <button class="btn btn-primary mt-6" data-close data-go-mentors>Explore mentors <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
 </dialog>
 
 <dialog id="become-dialog" class="modal" aria-labelledby="become-dialog-title">
